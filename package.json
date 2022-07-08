@@ -1,0 +1,28 @@
+{
+  "name": "odoyle",
+  "version": "1.0.0",
+  "description": "Micro Rules Engine powered by a simple JSON structure",
+  "main": "index.js",
+  "scripts": {
+    "test": "c8 mocha ./test/*.test.js"
+  },
+  "keywords": [
+    "rules",
+    "engine",
+    "o'doyle",
+    "business",
+    "json-rules",
+    "rules engine",
+    "business rules"
+  ],
+  "author": "Arnout Kazemier",
+  "license": "MIT",
+  "devDependencies": {
+    "assume": "^2.3.0",
+    "c8": "^7.11.3",
+    "mocha": "^10.0.0"
+  },
+  "dependencies": {
+    "propget": "^1.1.0"
+  }
+}

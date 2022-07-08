@@ -1,0 +1,7 @@
+package-lock.json
+node_modules
+.tern-port
+*.tgz
+*.log
+.DS_Store
+coverage
