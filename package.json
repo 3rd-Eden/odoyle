@@ -1,6 +1,6 @@
 {
   "name": "odoyle",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Micro Rules Engine powered by a simple JSON structure",
   "main": "index.js",
   "scripts": {
@@ -23,6 +23,7 @@
     "mocha": "^10.0.0"
   },
   "dependencies": {
+    "diagnostics": "^2.0.2",
     "propget": "^1.1.0"
   }
 }

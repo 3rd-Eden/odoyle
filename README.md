@@ -152,6 +152,19 @@ odoyle.ops.set('===', (input, value) => input === value);
 Note that we still assume the operator as first argument, and the function that
 executes the operation as second argument.
 
+# Debugging
+
+The project uses [diagnostics](https://github.com/3rd-Eden/diagnostics) to add
+debugging information to the project. Start your application with:
+
+```
+DEBUG=odoyle
+```
+
+To get information why certain rules failed. E.g. you supplied a `key` but we
+couldn't extract the data, or the provided `op` doesn't exist. Maybe a JS
+was caused during the execution. 
+
 # License
 
 [MIT](./LICENSE)

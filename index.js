@@ -1,3 +1,4 @@
+const debug = require('diagnostics')('odyle');
 const get = require('propget');
 
 /**
@@ -42,14 +43,22 @@ class Odoyle {
     // We need to determine if we are dealing with a set of rules before we
     // continue as this means we need to start a new odoyle operation.
     //
-    if (('some' in rule || 'every' in rule)) {
+    if (('some' in rule || 'every' in rule || 'not' in rule)) {
       return this.rules(data, rule);
     }
 
     const input = get(data, rule.key);
-    if (input === void 0) return false;
+    const op = this.ops.get(rule.op);
 
-    return (this.ops.get(rule.op) || this.ops.get('='))(input, rule.value);
+    if (input === void 0) {
+      debug('unable to extract data for rule, defaulting to false', rule);
+      return false;
+    }
+
+    if (op) return op(input, rule.value);
+
+    debug('unable to find the requested op, defaulting to = operator', rule);
+    return this.ops.get('=')(input, rule.value);
   }
 
   /**
@@ -72,6 +81,7 @@ class Odoyle {
         if (result && 'not' in rule) result = !this.rules(data, rule.not);
         if (result && 'value' in rule && 'key' in rule) result = exec(rule);
       } catch (e) {
+        debug('execution of rule resulted in an error', e, rule);
         result = false;
       }
 
@@ -80,4 +90,7 @@ class Odoyle {
   }
 }
 
+//
+// Expose the module.
+//
 module.exports = Odoyle;
