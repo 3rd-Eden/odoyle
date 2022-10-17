@@ -9,6 +9,9 @@ satisfied or not.
 
 ## Installation
 
+The package is published to the npm registry and can be installed by running
+the following command in your CLI:
+
 ```
 npm install --save odoyle
 ```
@@ -163,7 +166,7 @@ DEBUG=odoyle
 
 To get information why certain rules failed. E.g. you supplied a `key` but we
 couldn't extract the data, or the provided `op` doesn't exist. Maybe a JS
-was caused during the execution. 
+was caused during the execution.
 
 # License
 
