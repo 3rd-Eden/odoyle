@@ -1,0 +1,86 @@
+name: Publish
+
+# Only tag pushes publish. Never add pull_request, pull_request_target, or workflow_run here:
+# those run fork code with the publish job's OIDC permission.
+on:
+  push:
+    tags:
+      - 'v*'
+
+# No default token scope. Each job grants only what it needs.
+permissions: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: npm-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require tag on main
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Tag $TAG does not point at a commit on main" >&2
+            exit 1
+          fi
+
+      - name: Require tag to match package version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "v$VERSION" != "$TAG" ]; then
+            echo "package.json version v$VERSION does not match tag $TAG" >&2
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+
+      - name: Pin npm for trusted publishing
+        run: npm install -g npm@11.16.0
+
+      - name: Install deps
+        run: npm ci --ignore-scripts
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Publish with provenance
+        run: npm publish --provenance --access public
