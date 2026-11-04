@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/3rd-Eden/odoyle/schema.json",
+  "title": "Odoyle ruleset",
+  "description": "A ruleset is a rule, or an array of rules (every). Hosts extend it with Odoyle#schema(), which limits `op` to the registered names and adds each op's `args` schema.",
+  "$ref": "#/$defs/rules",
+  "$defs": {
+    "rules": { "$ref": "#/$defs/rule" },
+    "rule": {
+      "anyOf": [
+        { "$ref": "#/$defs/node" },
+        { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+        { "type": ["string", "number", "boolean", "null"] }
+      ]
+    },
+    "name": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" },
+    "opName": { "type": "string" },
+    "operand": {
+      "description": "A literal, a $name reference, { key }, { literal }, or an op call.",
+      "anyOf": [
+        { "type": ["string", "number", "boolean", "null"] },
+        { "type": "array", "items": { "$ref": "#/$defs/operand" } },
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "not": {
+            "anyOf": [
+              { "required": ["let"] },
+              { "required": ["for"] },
+              { "required": ["when"] },
+              { "required": ["every"] },
+              { "required": ["some"] },
+              { "required": ["not"] },
+              { "required": ["op"] },
+              { "required": ["key"] },
+              { "required": ["literal"] }
+            ]
+          }
+        }
+      ]
+    },
+    "dynamicOperand": {
+      "anyOf": [
+        { "type": "string", "pattern": "^\\$([A-Za-z_]\\w*)((?:\\.[^.\\s]+)*)$" },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/node" },
+            {
+              "anyOf": [
+                { "required": ["let"] },
+                { "required": ["for"] },
+                { "required": ["when"] },
+                { "required": ["every"] },
+                { "required": ["some"] },
+                { "required": ["not"] },
+                { "required": ["op"] },
+                { "required": ["key"] }
+              ]
+            },
+            { "not": { "required": ["literal"] } }
+          ]
+        },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/operand" },
+          "contains": { "$ref": "#/$defs/dynamicOperand" }
+        }
+      ]
+    },
+    "node": {
+      "type": "object",
+      "properties": {
+        "every": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+        "some": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+        "not": { "$ref": "#/$defs/rules" },
+        "when": { "$ref": "#/$defs/rules" },
+        "for": {
+          "type": "object",
+          "required": ["each", "as"],
+          "additionalProperties": false,
+          "properties": {
+            "each": { "$ref": "#/$defs/operand" },
+            "as": { "$ref": "#/$defs/name" }
+          }
+        },
+        "let": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": { "$ref": "#/$defs/operand" }
+        },
+        "key": { "type": "string", "minLength": 1 },
+        "value": { "$ref": "#/$defs/operand" },
+        "literal": {},
+        "op": { "$ref": "#/$defs/opName" },
+        "args": { "type": "array", "items": { "$ref": "#/$defs/operand" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}

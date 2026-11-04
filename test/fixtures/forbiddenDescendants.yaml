@@ -1,0 +1,7 @@
+# Report each descendant that matches one of the forbidden categories.
+id: forbiddenDescendants
+for: { each: { op: descendants, args: [$node] }, as: descendant }
+when:
+  for: { each: { key: options.forbidden }, as: category }
+  when: { op: matchesCategory, args: [$descendant, $category] }
+report: { at: $descendant }

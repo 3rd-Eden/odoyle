@@ -1,6 +1,6 @@
-const { describe, it } = require('mocha');
-const Odoyle = require('../index.js');
-const assume = require('assume');
+import { describe, it, before } from 'mocha';
+import Odoyle from '../index.js';
+import assume from 'assume';
 
 describe('odoyle', function () {
   let odoyle;
@@ -9,17 +9,9 @@ describe('odoyle', function () {
     odoyle = new Odoyle();
   });
 
-  it('has an `ops` property', function () {
+  it('has an `ops` property with the default ops', function () {
     assume(odoyle.ops).is.a('map');
-    assume(odoyle.ops.size).equals(9);
-  });
-
-  it('allows custom ops', function () {
-    const another = new Odoyle({
-      '=': () => false
-    });
-
-    assume(another.ops.size).equals(1);
+    assume(odoyle.ops.has('>=')).is.true();
   });
 
   describe('#rules', function () {
@@ -27,15 +19,39 @@ describe('odoyle', function () {
       assume(odoyle.rules).is.a('function');
     });
 
-    it('sees a thrown error as a failed rule', function () {
-      odoyle.ops.set('error', function explode() {
-        throw new Error('Booom');
-      });
+    it('sees a thrown error as a failed rule (v1 behavior)', function () {
+      const another = new Odoyle({ ops: { error() { throw new Error('Booom'); } } });
 
-      const data = { foo: 'bar' };
-      const rules = { key: 'foo', op: 'error', value: 30 };
+      assume(another.rules({ foo: 'bar' }, { key: 'foo', op: 'error', value: 30 })).is.false();
+    });
 
-      assume(odoyle.rules(data, rules)).is.false();
+    it('falls back to = for an unknown op (v1 behavior)', function () {
+      assume(odoyle.rules({ foo: 30 }, { key: 'foo', op: 'nope', value: 30 })).is.true();
+    });
+
+    it('accepts the v1 README examples', function () {
+      assume(odoyle.rules({ foo: 90 }, { key: 'foo', op: '>=', value: 30 })).is.true();
+      assume(odoyle.rules({ clicks: 25 }, { key: 'clicks', op: '>=', value: 20 })).is.true();
+    });
+
+    it('runs the large README example', function () {
+      const rules = {
+        every: [
+          { some: [
+            { key: 'clicks', op: '=', value: 300 },
+            { every: [{ key: 'clicks', op: '=', value: 19 }, { key: 'another', op: '=', value: 77 }] }
+          ] },
+          { key: 'clicks', op: '<', value: 20 },
+          { key: 'clicks', op: '>', value: 10 }
+        ],
+        some: [
+          { key: 'another', op: '>', value: 10 },
+          { key: 'another', op: '<', value: 10 }
+        ]
+      };
+
+      assume(odoyle.rules({ clicks: 19, another: 77 }, rules)).is.true();
+      assume(odoyle.rules({ clicks: 19, another: 10 }, rules)).is.false();
     });
 
     [
