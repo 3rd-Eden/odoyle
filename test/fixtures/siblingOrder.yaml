@@ -1,0 +1,10 @@
+# Report once per group when the siblings are not in the declared order.
+id: siblingOrder
+let:
+  order: { op: coalesce, args: [{ key: options.order }, { key: options.by }] }
+  group: { op: orderedGroup, args: [$node] }
+when: { op: isFirstMatchingInGroup, args: [$node, $group, $order] }
+not: { op: inOrder, args: [$group, $order] }
+report:
+  at: $node
+  downgradeWhen: { op: orderUnreliable, args: [$node] }

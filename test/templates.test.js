@@ -1,11 +1,15 @@
 import { describe, it } from 'mocha';
 import assume from 'assume';
 import { readFileSync } from 'node:fs';
+import { parse } from 'yaml';
 import Odoyle from '../index.js';
 import { ops } from './fixtures/ops.js';
 
-/** Load a JSON fixture ruleset. */
-const load = (name) => JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url), 'utf8'));
+/**
+ * Load a fixture ruleset. Each fixture is authored in YAML, which is how hosts
+ * are expected to write templates. Odoyle receives only the parsed object.
+ */
+const load = (name) => parse(readFileSync(new URL(`./fixtures/${name}.yaml`, import.meta.url), 'utf8'));
 
 const odoyle = new Odoyle({ ops: {
   ...Object.fromEntries(Object.entries(ops).map(([k, fn]) => [k, { fn }])),
@@ -179,5 +183,17 @@ describe('template fixtures', function () {
 
       assume(check({ min: 2 }, root).matches[0].bindings.counted).eqls({ count: 1, dynamic: true });
     });
+  });
+});
+
+describe('YAML and JSON rulesets', function () {
+  it('compiles the same ruleset from YAML and from JSON to the same result', function () {
+    const yaml = load('forbiddenDescendants');
+    const json = JSON.parse(JSON.stringify(yaml));
+    const compile = (rules) => odoyle.compile(rules, { vars: ['node'], extra: ['id', 'report'] });
+    const tree = { children: [{ category: 'button' }, { category: 'text' }] };
+    const data = { options: { forbidden: ['button'] } };
+
+    assume(compile(yaml)(data, { node: tree })).eqls(compile(json)(data, { node: tree }));
   });
 });

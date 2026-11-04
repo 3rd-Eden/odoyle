@@ -16,9 +16,10 @@ bindings. What a match is for (a finding, a discount, an alert) is up to you.
 npm install --save odoyle
 ```
 
-Odoyle is ESM only and needs Node.js 24 or later. It accepts parsed objects.
-Parse YAML in your own code (for example with the `yaml` package). Odoyle does
-not depend on a YAML parser.
+Odoyle is ESM only and needs Node.js 24 or later. It accepts parsed objects,
+so you can write rulesets in YAML or JSON. Parse YAML in your own code, for
+example with the [`yaml`](https://www.npmjs.com/package/yaml) package. Odoyle
+does not depend on a YAML parser.
 
 ## Quick start
 
@@ -148,7 +149,35 @@ name shadows the outer variable inside that nested rule only.
 with), `$` (ends with), `in` (`value`, `list`), and `exists` (not `undefined`
 or `null`). The string ops give `false` for non-strings.
 
-### Example: a template
+### Example: a template in YAML
+
+Write the ruleset in YAML:
+
+```yaml
+# required-attribute.yaml
+# Report each attribute in `options.attributes` that the node does not have.
+for: { each: { key: options.attributes }, as: name }
+when:
+  not: { op: hasAttr, args: [$node, $name] }
+report: { at: $node }
+```
+
+Parse it, then compile it:
+
+```js
+import { readFileSync } from 'node:fs';
+import { parse } from 'yaml';
+
+const template = parse(readFileSync('required-attribute.yaml', 'utf8'));
+const evaluate = odoyle.compile(template, { vars: ['node'], extra: ['report'] });
+const { matches } = evaluate({ options: { attributes: ['alt', 'role'] } }, { node });
+// One match for each attribute that `node` does not have.
+// matches[0].bindings.name === 'alt'
+```
+
+The host decides what `report` means. Odoyle ignores it.
+
+The same ruleset in JSON gives the same result:
 
 ```json
 {
@@ -158,14 +187,27 @@ or `null`). The string ops give `false` for non-strings.
 }
 ```
 
-```js
-const evaluate = odoyle.compile(template, { vars: ['node'], extra: ['report'] });
-const { matches } = evaluate({ options: { attributes: ['alt', 'role'] } }, { node });
-// One match for each attribute that `node` does not have.
-// matches[0].bindings.name === 'alt'
+### Example: bindings and a nested op in YAML
+
+```yaml
+# Report a part whose text contrast is below the threshold.
+for: { each: { op: partsOr, args: [$rec, { key: options.parts }, $node] }, as: target }
+let:
+  fg: { op: firstStyle, args: [$target, [color, fill]] }
+  bg: { op: firstStyle, args: [$target, [background, background-color], ancestors] }
+when:
+  every:
+    - { op: exists, args: [$fg] }
+    - { op: exists, args: [$bg.value] }
+    - { op: "<", args: [{ op: contrastRatio, args: [$fg, $bg.value] }, { key: options.ratio }] }
+report: { at: $target }
 ```
 
-The host decides what `report` means. Odoyle ignores it.
+In YAML, quote ops that are YAML syntax, such as `"<"`, `"!="` and `"="`.
+Values that start with `$` are bindings, and they need no quotes. To use a
+literal string that starts with `$`, write `{ literal: "$value" }`.
+
+More YAML rulesets are in [`test/fixtures/`](test/fixtures/).
 
 ## Schema
 

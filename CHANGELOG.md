@@ -28,6 +28,7 @@
 - `OdoyleError` with `path`.
 - `schema.json` and `odoyle.schema({ extra })` for JSON Schema validation of rulesets.
 - Ops `in` and `exists`.
+- YAML examples in the README. The test fixtures are YAML rulesets, and a test shows that YAML and JSON give the same result. `yaml` is a development dependency only.
 
 ### Kept
 
