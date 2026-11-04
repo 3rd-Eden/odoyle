@@ -1,0 +1,27 @@
+{
+  "id": "contrastConstraint",
+  "for": { "each": { "op": "partsOr", "args": ["$rec", { "key": "options.parts" }, "$node"] }, "as": "target" },
+  "let": {
+    "fg": { "op": "firstStyle", "args": ["$target", ["color", "fill"]] },
+    "bg": { "op": "firstStyle", "args": ["$target", ["background", "background-color"], "ancestors"] },
+    "threshold": {
+      "op": "ifElse",
+      "args": [
+        { "every": [
+          { "op": "exists", "args": [{ "key": "options.largeTextRatio" }] },
+          { "op": "isLargeText", "args": ["$target"] }
+        ] },
+        { "key": "options.largeTextRatio" },
+        { "key": "options.ratio" }
+      ]
+    }
+  },
+  "when": {
+    "every": [
+      { "op": "exists", "args": ["$fg"] },
+      { "op": "exists", "args": ["$bg.value"] },
+      { "op": "<", "args": [{ "op": "contrastRatio", "args": ["$fg", "$bg.value"] }, "$threshold"] }
+    ]
+  },
+  "report": { "at": "$target", "downgradeWhen": { "op": "!=", "args": ["$bg.node.component", "$target.component"] } }
+}

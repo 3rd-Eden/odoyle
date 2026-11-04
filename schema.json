@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/3rd-Eden/odoyle/schema.json",
+  "title": "Odoyle ruleset",
+  "description": "A ruleset is a rule, or an array of rules (every). Hosts extend it with Odoyle#schema(), which limits `op` to the registered names and adds each op's `args` schema.",
+  "$ref": "#/$defs/rules",
+  "$defs": {
+    "rules": {
+      "oneOf": [
+        { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+        { "$ref": "#/$defs/rule" }
+      ]
+    },
+    "rule": { "$ref": "#/$defs/node" },
+    "name": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" },
+    "opName": { "type": "string" },
+    "operand": {
+      "description": "A literal, a $name reference, { key }, { literal }, or an op call.",
+      "anyOf": [
+        { "type": ["string", "number", "boolean", "null"] },
+        { "type": "array", "items": { "$ref": "#/$defs/operand" } },
+        { "$ref": "#/$defs/node" }
+      ]
+    },
+    "node": {
+      "type": "object",
+      "properties": {
+        "every": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+        "some": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+        "not": { "$ref": "#/$defs/rules" },
+        "when": { "$ref": "#/$defs/rules" },
+        "for": {
+          "type": "object",
+          "required": ["each", "as"],
+          "additionalProperties": false,
+          "properties": {
+            "each": { "$ref": "#/$defs/operand" },
+            "as": { "$ref": "#/$defs/name" }
+          }
+        },
+        "let": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": { "$ref": "#/$defs/operand" }
+        },
+        "key": { "type": "string", "minLength": 1 },
+        "value": { "$ref": "#/$defs/operand" },
+        "literal": true,
+        "op": { "$ref": "#/$defs/opName" },
+        "args": { "type": "array", "items": { "$ref": "#/$defs/operand" } }
+      }
+    }
+  }
+}

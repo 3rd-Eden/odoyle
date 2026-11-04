@@ -1,0 +1,7 @@
+{
+  "id": "requiredAttribute",
+  "options": { "type": "object", "required": ["attributes"], "properties": { "attributes": { "type": "array", "items": { "type": "string" } } } },
+  "for": { "each": { "key": "options.attributes" }, "as": "name" },
+  "when": { "not": { "op": "hasAttr", "args": ["$node", "$name"] } },
+  "report": { "at": "$node" }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "cardinality",
+  "let": {
+    "subtree": { "op": "descendants", "args": ["$node"] },
+    "matched": { "op": "filterBy", "args": ["$subtree", { "key": "options.matcher" }] },
+    "counted": { "op": "participantCount", "args": ["$matched"] }
+  },
+  "when": {
+    "not": { "every": [
+      { "op": "exists", "args": [{ "key": "options.unless" }] },
+      { "op": "anyMatch", "args": ["$subtree", { "key": "options.unless" }] }
+    ] }
+  },
+  "some": [
+    { "every": [
+      { "op": "exists", "args": [{ "key": "options.max" }] },
+      { "op": ">", "args": ["$counted.count", { "key": "options.max" }] }
+    ] },
+    { "every": [
+      { "op": "exists", "args": [{ "key": "options.min" }] },
+      { "op": "<", "args": ["$counted.count", { "key": "options.min" }] }
+    ] },
+    { "every": [
+      { "op": "exists", "args": [{ "key": "options.exactly" }] },
+      { "op": "!=", "args": ["$counted.count", { "key": "options.exactly" }] }
+    ] }
+  ],
+  "report": { "at": "$node", "downgradeWhen": "$counted.dynamic" }
+}
