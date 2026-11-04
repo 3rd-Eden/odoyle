@@ -1,0 +1,8 @@
+{
+  "attribution": {
+    "templates": {
+      "markdown": "> 🤖 Written by {model} with Meatproxy. AI text can be wrong. Check it.",
+      "trailer": "{model} with Meatproxy; AI text can be wrong; check it."
+    }
+  }
+}
