@@ -320,9 +320,9 @@ describe('odoyle v2', function () {
       assume(e.message.match(/kaboom/g).length).equals(1);
     });
 
-    it('rules() turns a throw into false (v1 behavior)', function () {
+    it('rules() catches errors before applying not (v1 behavior)', function () {
       assume(odoyle.rules({}, { op: 'boom', args: [] })).is.false();
-      assume(odoyle.rules({}, { not: { op: 'boom', args: [] } })).is.false();
+      assume(odoyle.rules({}, { not: { op: 'boom', args: [] } })).is.true();
     });
 
     it('rules() keeps working when the ruleset is invalid', function () {
