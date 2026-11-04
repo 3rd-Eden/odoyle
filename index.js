@@ -115,24 +115,29 @@ function normalize(name, def) {
  * @returns {?String} A description of the problem, or `undefined`.
  */
 function checkArgs(schema, args) {
-  const { minItems = 0, maxItems = Infinity, prefixItems = [], items } = schema;
+  const { minItems = 0, maxItems = Infinity } = isObject(schema) ? schema : {};
 
   if (args.length < minItems) return `expected at least ${minItems} arguments, got ${args.length}`;
   if (args.length > maxItems) return `expected at most ${maxItems} arguments, got ${args.length}`;
 
-  for (let i = 0; i < args.length; i++) {
-    if (!args[i].literal) continue;
+  const validate = ajv.compile(schema);
+  const values = args.map((arg) => arg.literal ? arg.value : undefined);
 
-    const sub = i < prefixItems.length ? prefixItems[i] : items;
+  if (validate(values)) return;
 
-    if (sub === undefined || typeof sub === 'boolean' && sub) continue;
+  const errors = args.every((arg) => arg.literal) ? validate.errors : validate.errors.filter((error) => {
+    if (error.keyword === 'minItems' || error.keyword === 'maxItems' || error.keyword === 'false schema') return true;
 
-    const validate = ajv.compile(sub);
+    const match = /^\/(\d+)(?:\/|$)/.exec(error.instancePath);
 
-    if (!validate(args[i].value)) {
-      return `argument ${i} ${ajv.errorsText(validate.errors, { dataVar: 'value' })}`;
-    }
-  }
+    return match && args[Number(match[1])]?.literal;
+  });
+
+  if (!errors.length) return;
+
+  const index = /^\/(\d+)(?:\/|$)/.exec(errors[0].instancePath)?.[1];
+
+  return `${index === undefined ? 'arguments' : `argument ${index}`} ${ajv.errorsText(errors, { dataVar: 'args' })}`;
 }
 
 /**
@@ -268,13 +273,13 @@ export default class Odoyle {
    */
   rule(rule, path, cx) {
     if (Array.isArray(rule)) {
-      return this.group('every', rule, path, cx);
+      return this.protect(this.group('every', rule, path, cx), cx);
     }
 
     if (!isObject(rule)) {
       const operand = this.operand(rule, path, cx);
 
-      return (data, scope) => operand.run(data, scope) ? [{}] : [];
+      return this.protect((data, scope) => operand.run(data, scope) ? [{}] : [], cx);
     }
 
     for (const key of Object.keys(rule)) {
@@ -337,10 +342,16 @@ export default class Odoyle {
         const frame = Object.assign(Object.create(null), scope);
         const local = {};
 
-        if (loop) frame[loop.as] = local[loop.as] = item;
+        if (loop) {
+          frame[loop.as] = item;
+          Object.defineProperty(local, loop.as, { value: item, enumerable: true, configurable: true, writable: true });
+        }
 
         for (const { name, operand } of lets) {
-          frame[name] = local[name] = operand.run(data, frame);
+          const value = operand.run(data, frame);
+
+          frame[name] = value;
+          Object.defineProperty(local, name, { value, enumerable: true, configurable: true, writable: true });
         }
 
         if (guard && !guard(data, frame).length) continue;
@@ -353,11 +364,11 @@ export default class Odoyle {
       return found;
     };
 
-    return path === '' ? this.protect(run, cx) : run;
+    return this.protect(run, cx);
   }
 
   /**
-   * In legacy mode a thrown error means "does not hold". Wraps the root runner.
+   * In legacy mode, errors make a rule fail. Wraps each rule runner.
    *
    * @param {Function} run A rule runner.
    * @param {Object} cx Compile context.
@@ -439,6 +450,14 @@ export default class Odoyle {
       const run = this.rule(value, path, cx);
 
       return { literal: false, run: (data, scope) => run(data, scope).length > 0 };
+    }
+
+    if (!cx.legacy && ('op' in value || 'key' in value)) {
+      for (const key of Object.keys(value)) {
+        if (!KEYS.has(key) && !cx.extra.has(key)) {
+          throw new OdoyleError(`${path}${path ? '.' : ''}${key}`, `unknown property "${key}"`);
+        }
+      }
     }
 
     if ('literal' in value) {
@@ -564,12 +583,38 @@ export default class Odoyle {
     const doc = structuredClone(base || SCHEMA);
     const names = [...this.ops.keys()];
 
+    doc.$id ||= SCHEMA.$id;
+    doc.$defs.dynamicOperand ||= SCHEMA.$defs.dynamicOperand;
     doc.$defs.node.properties = { ...doc.$defs.node.properties, ...extra };
     doc.$defs.opName = { enum: names };
-    doc.$defs.node.allOf = [...this.ops].filter(([, op]) => op.args).map(([name, op]) => ({
-      if: { required: ['op'], properties: { op: { const: name } } },
-      then: { properties: { args: op.args } }
-    }));
+    doc.$defs.node.allOf = [...this.ops].filter(([, op]) => op.args).map(([name, op], i) => {
+      const args = isObject(op.args) ? structuredClone(op.args) : op.args;
+
+      if (isObject(args)) {
+        args.$id ||= `${doc.$id}/op-args/${i}`;
+
+        const operand = (schema) => ({
+          anyOf: [
+            schema,
+            { $ref: `${doc.$id}#/$defs/dynamicOperand` },
+            {
+              type: 'object',
+              required: ['literal'],
+              properties: { literal: schema },
+              additionalProperties: false
+            }
+          ]
+        });
+
+        if (Array.isArray(args.prefixItems)) args.prefixItems = args.prefixItems.map(operand);
+        if ('items' in args) args.items = operand(args.items);
+      }
+
+      return {
+        if: { required: ['op'], properties: { op: { const: name } } },
+        then: { properties: { args } }
+      };
+    });
 
     return doc;
   }

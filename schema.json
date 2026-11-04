@@ -5,13 +5,14 @@
   "description": "A ruleset is a rule, or an array of rules (every). Hosts extend it with Odoyle#schema(), which limits `op` to the registered names and adds each op's `args` schema.",
   "$ref": "#/$defs/rules",
   "$defs": {
-    "rules": {
-      "oneOf": [
+    "rules": { "$ref": "#/$defs/rule" },
+    "rule": {
+      "anyOf": [
+        { "$ref": "#/$defs/node" },
         { "type": "array", "items": { "$ref": "#/$defs/rule" } },
-        { "$ref": "#/$defs/rule" }
+        { "type": ["string", "number", "boolean", "null"] }
       ]
     },
-    "rule": { "$ref": "#/$defs/node" },
     "name": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" },
     "opName": { "type": "string" },
     "operand": {
@@ -19,7 +20,51 @@
       "anyOf": [
         { "type": ["string", "number", "boolean", "null"] },
         { "type": "array", "items": { "$ref": "#/$defs/operand" } },
-        { "$ref": "#/$defs/node" }
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "not": {
+            "anyOf": [
+              { "required": ["let"] },
+              { "required": ["for"] },
+              { "required": ["when"] },
+              { "required": ["every"] },
+              { "required": ["some"] },
+              { "required": ["not"] },
+              { "required": ["op"] },
+              { "required": ["key"] },
+              { "required": ["literal"] }
+            ]
+          }
+        }
+      ]
+    },
+    "dynamicOperand": {
+      "anyOf": [
+        { "type": "string", "pattern": "^\\$([A-Za-z_]\\w*)((?:\\.[^.\\s]+)*)$" },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/node" },
+            {
+              "anyOf": [
+                { "required": ["let"] },
+                { "required": ["for"] },
+                { "required": ["when"] },
+                { "required": ["every"] },
+                { "required": ["some"] },
+                { "required": ["not"] },
+                { "required": ["op"] },
+                { "required": ["key"] }
+              ]
+            },
+            { "not": { "required": ["literal"] } }
+          ]
+        },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/operand" },
+          "contains": { "$ref": "#/$defs/dynamicOperand" }
+        }
       ]
     },
     "node": {
@@ -45,10 +90,11 @@
         },
         "key": { "type": "string", "minLength": 1 },
         "value": { "$ref": "#/$defs/operand" },
-        "literal": true,
+        "literal": {},
         "op": { "$ref": "#/$defs/opName" },
         "args": { "type": "array", "items": { "$ref": "#/$defs/operand" } }
-      }
+      },
+      "additionalProperties": false
     }
   }
 }
